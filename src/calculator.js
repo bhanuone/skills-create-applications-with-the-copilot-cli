@@ -5,6 +5,9 @@
 // - subtraction
 // - multiplication
 // - division
+// - modulo
+// - exponentiation
+// - square root
 
 function addition(leftOperand, rightOperand) {
   return leftOperand + rightOperand;
@@ -26,6 +29,26 @@ function division(leftOperand, rightOperand) {
   return leftOperand / rightOperand;
 }
 
+function modulo(leftOperand, rightOperand) {
+  if (rightOperand === 0) {
+    throw new Error("Modulo by zero is not allowed.");
+  }
+
+  return leftOperand % rightOperand;
+}
+
+function power(base, exponent) {
+  return base ** exponent;
+}
+
+function squareRoot(value) {
+  if (value < 0) {
+    throw new Error("Square root of a negative number is not allowed.");
+  }
+
+  return Math.sqrt(value);
+}
+
 function normalizeOperation(token) {
   const value = String(token).toLowerCase();
 
@@ -45,6 +68,18 @@ function normalizeOperation(token) {
     return "division";
   }
 
+  if (["%", "mod", "modulo"].includes(value)) {
+    return "modulo";
+  }
+
+  if (["^", "**", "pow", "power"].includes(value)) {
+    return "power";
+  }
+
+  if (["sqrt", "√", "square-root", "squareroot"].includes(value)) {
+    return "squareRoot";
+  }
+
   return null;
 }
 
@@ -60,9 +95,15 @@ function calculate(operation, leftOperand, rightOperand) {
       return multiplication(leftOperand, rightOperand);
     case "division":
       return division(leftOperand, rightOperand);
+    case "modulo":
+      return modulo(leftOperand, rightOperand);
+    case "power":
+      return power(leftOperand, rightOperand);
+    case "squareRoot":
+      return squareRoot(leftOperand);
     default:
       throw new Error(
-        `Unsupported operation: ${operation}. Use +, -, *, / or add, subtract, multiply, divide.`,
+        `Unsupported operation: ${operation}. Use +, -, *, /, %, ^, sqrt or add, subtract, multiply, divide, modulo, power, squareRoot.`,
       );
   }
 }
@@ -78,9 +119,27 @@ function parseNumber(value, label) {
 }
 
 function parseCliArguments(args) {
+  if (args.length === 2) {
+    const [firstArgument, secondArgument] = args;
+
+    if (normalizeOperation(firstArgument) === "squareRoot") {
+      return {
+        operation: firstArgument,
+        leftOperand: secondArgument,
+      };
+    }
+
+    if (normalizeOperation(secondArgument) === "squareRoot") {
+      return {
+        operation: secondArgument,
+        leftOperand: firstArgument,
+      };
+    }
+  }
+
   if (args.length !== 3) {
     throw new Error(
-      "Usage: node src/calculator.js <left> <operation> <right> or node src/calculator.js <operation> <left> <right>",
+      "Usage: node src/calculator.js <left> <operation> <right>, node src/calculator.js <operation> <left> <right>, node src/calculator.js <value> <operation>, or node src/calculator.js <operation> <value>",
     );
   }
 
@@ -103,17 +162,25 @@ function parseCliArguments(args) {
   }
 
   throw new Error(
-    "No supported operation was found. Use +, -, *, / or add, subtract, multiply, divide.",
+    "No supported operation was found. Use +, -, *, /, %, ^, sqrt or add, subtract, multiply, divide, modulo, power, squareRoot.",
   );
 }
 
 function runCli(args = process.argv.slice(2)) {
   const { operation, leftOperand, rightOperand } = parseCliArguments(args);
-  const result = calculate(
-    operation,
-    parseNumber(leftOperand, "left operand"),
-    parseNumber(rightOperand, "right operand"),
+  const normalizedOperation = normalizeOperation(operation);
+  const parsedLeftOperand = parseNumber(
+    leftOperand,
+    normalizedOperation === "squareRoot" ? "value" : "left operand",
   );
+  const result =
+    normalizedOperation === "squareRoot"
+      ? calculate(operation, parsedLeftOperand)
+      : calculate(
+          operation,
+          parsedLeftOperand,
+          parseNumber(rightOperand, "right operand"),
+        );
 
   console.log(result);
   return result;
@@ -133,6 +200,9 @@ module.exports = {
   subtraction,
   multiplication,
   division,
+  modulo,
+  power,
+  squareRoot,
   calculate,
   normalizeOperation,
   parseCliArguments,
